@@ -1,10 +1,11 @@
+import Image from 'next/image';
 import { db, schema } from "@/db";
 import { eq, ne, and, desc, sql } from "drizzle-orm";
 import { NewsCard, CatTag, PlaceholderMedia, fmtDate } from "@/components/NewsCard";
 import { notFound } from "next/navigation";
 import ShareRow from "./ShareRow";
 
-export const revalidate = 0; // hər dəfə təzə baxış sayını göstərmək üçün
+export const revalidate = 0;
 
 export default async function ArticlePage({ params }: { params: { id: string } }) {
   const id = parseInt(params.id, 10);
@@ -13,8 +14,12 @@ export default async function ArticlePage({ params }: { params: { id: string } }
   const [article] = await db.select().from(schema.articles).where(eq(schema.articles.id, id));
   if (!article) return notFound();
 
-  // baxış sayını artırırıq (fire-and-forget)
-  db.update(schema.articles).set({ views: sql`${schema.articles.views} + 1` }).where(eq(schema.articles.id, id)).then();
+  // Baxış sayını artır
+  db.update(schema.articles)
+    .set({ views: sql`${schema.articles.views} + 1` })
+    .where(eq(schema.articles.id, id))
+    .then()
+    .catch(console.error);
 
   const [category] = await db.select().from(schema.categories).where(eq(schema.categories.slug, article.categorySlug));
 
@@ -41,7 +46,19 @@ export default async function ArticlePage({ params }: { params: { id: string } }
       </div>
 
       <div className="article-media">
-        <PlaceholderMedia category={category} />
+        {article.image ? (
+          <Image
+            src={article.image}
+            alt={article.title}
+            width={1200}
+            height={630}
+            className="w-full h-auto object-cover rounded-lg"
+            priority
+            quality={85}
+          />
+        ) : (
+          <PlaceholderMedia category={category} />
+        )}
       </div>
 
       <div className="article-body">
