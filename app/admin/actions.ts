@@ -6,8 +6,14 @@ import { revalidatePath } from "next/cache";
 import { eq } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { expectedSessionToken, isAuthed, COOKIE_NAME } from "@/lib/auth";
-import { writeFile } from "fs/promises";
-import path from "path";
+import { v2 as cloudinary } from "cloudinary"; // ← Cloudinary əlavə olundu
+
+// Cloudinary Konfiqurasiyası
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
 export async function login(formData: FormData) {
   const password = formData.get("password") as string;
@@ -32,25 +38,28 @@ export async function createArticle(formData: FormData) {
 
   let imagePath: string | null = null;
 
-  // === ŞƏKİL YÜKLƏMƏ ===
+  // === ŞƏKİL YÜKLƏMƏ (CLOUDINARY İLƏ) ===
   const file = formData.get("image") as File | null;
   if (file && file.size > 0) {
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
-    const filename = `${Date.now()}-${file.name.replace(/\s+/g, "-")}`;
-    const uploadDir = path.join(process.cwd(), "public", "uploads");
+    // Şəkli Render serverinə yox, birbaşa Cloudinary buluduna göndəririk
+    const uploadResult = await new Promise<any>((resolve, reject) => {
+      cloudinary.uploader.upload_stream(
+        { folder: "bozzshop" }, // Buludda açılacaq qovluq adı
+        (error, result) => {
+          if (error) reject(error);
+          else resolve(result);
+        }
+      ).end(buffer);
+    });
 
-    // Qovluq yoxdursa yarat
-    const { mkdir } = await import("fs/promises");
-    await mkdir(uploadDir, { recursive: true });
-
-    const filePath = path.join(uploadDir, filename);
-    await writeFile(filePath, buffer);
-
-    imagePath = `/uploads/${filename}`;
+    // ƏN ƏSAS DƏYİŞİKLİK:
+    // Artıq bazaya lokal yol yox, buluddan gələn daimi "https://..." linki yazılır!
+    imagePath = uploadResult.secure_url;
   } 
-  // Əgər URL daxil edilibsə
+  // Əgər kənardan birbaşa URL daxil edilibsə
   else if (formData.get("imageUrl")) {
     imagePath = formData.get("imageUrl") as string;
   }
@@ -67,7 +76,7 @@ export async function createArticle(formData: FormData) {
     categorySlug: formData.get("category") as string,
     author: (formData.get("author") as string).trim() || "Redaksiya",
     tags,
-    image: imagePath,           // ← ƏSAS ƏLAVƏ
+    image: imagePath,
   });
 
   revalidatePath("/");
