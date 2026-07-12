@@ -18,6 +18,9 @@ export const articles = pgTable("articles", {
   publishedAt: timestamp("published_at").notNull().defaultNow(),
   views: integer("views").notNull().default(0),
   tags: jsonb("tags").$type<string[]>().default([]),
+  
+  // ← YENİ ƏLAVƏ
+  image: text("image"),   // şəkil yolu üçün
 });
 
 export type Category = typeof categories.$inferSelect;
