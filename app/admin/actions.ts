@@ -6,8 +6,19 @@ import { revalidatePath } from "next/cache";
 import { eq } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { expectedSessionToken, isAuthed, COOKIE_NAME } from "@/lib/auth";
+<<<<<<< HEAD
 import { writeFile } from "fs/promises";
 import path from "path";
+=======
+import { v2 as cloudinary } from "cloudinary";
+
+// Cloudinary Konfiqurasiyası (Açarları birbaşa koda yazmırıq, .env-dən oxuyur)
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+>>>>>>> 7c7de51d1f4705547011b09946faf4e3a88d8bd2
 
 export async function login(formData: FormData) {
   const password = formData.get("password") as string;
@@ -32,12 +43,17 @@ export async function createArticle(formData: FormData) {
 
   let imagePath: string | null = null;
 
+<<<<<<< HEAD
   // === ŞƏKİL YÜKLƏMƏ ===
+=======
+  // === CLOUDINARY BULUDUNA YÜKLƏMƏ ===
+>>>>>>> 7c7de51d1f4705547011b09946faf4e3a88d8bd2
   const file = formData.get("image") as File | null;
   if (file && file.size > 0) {
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
+<<<<<<< HEAD
     const filename = `${Date.now()}-${file.name.replace(/\s+/g, "-")}`;
     const uploadDir = path.join(process.cwd(), "public", "uploads");
 
@@ -51,6 +67,21 @@ export async function createArticle(formData: FormData) {
     imagePath = `/uploads/${filename}`;
   } 
   // Əgər URL daxil edilibsə
+=======
+    const uploadResult = await new Promise<any>((resolve, reject) => {
+      cloudinary.uploader.upload_stream(
+        { folder: "tribuna" }, // Şəkillər "tribuna" qovluğuna yığılacaq
+        (error, result) => {
+          if (error) reject(error);
+          else resolve(result);
+        }
+      ).end(buffer);
+    });
+
+    // Bazaya daimi "https://res.cloudinary.com/..." linki yazılır
+    imagePath = uploadResult.secure_url;
+  } 
+>>>>>>> 7c7de51d1f4705547011b09946faf4e3a88d8bd2
   else if (formData.get("imageUrl")) {
     imagePath = formData.get("imageUrl") as string;
   }
@@ -67,7 +98,11 @@ export async function createArticle(formData: FormData) {
     categorySlug: formData.get("category") as string,
     author: (formData.get("author") as string).trim() || "Redaksiya",
     tags,
+<<<<<<< HEAD
     image: imagePath,           // ← ƏSAS ƏLAVƏ
+=======
+    image: imagePath,
+>>>>>>> 7c7de51d1f4705547011b09946faf4e3a88d8bd2
   });
 
   revalidatePath("/");
